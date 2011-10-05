@@ -52,11 +52,6 @@
 		//
 		tabGroup.addTab(tab1);  
 		tabGroup.addTab(tab2);  
-		
-		function onClick(e){
-			alert( e );
-		}
-		
 		//
 		var m = Puremvc.clone( Puremvc.Mediator , "MainMediator" );
 		
