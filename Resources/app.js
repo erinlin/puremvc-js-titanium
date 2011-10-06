@@ -29,7 +29,7 @@ Myapp.comm.StartupCommand  = function(){
 } 
 
 var startUp = function(){
-	Puremvc.facade.registerCommand( 'startUp', new Myapp.comm.StartupCommand );
+	Puremvc.facade.registerCommand( 'startUp', Myapp.comm.StartupCommand );
 	Puremvc.facade.sendNotification( "startUp", "Welcome to Puremvc!" );
 };
 
