@@ -509,8 +509,8 @@ var Controller = {
 			var commandClassRef/*Function*/ = this.commandMap[note.getName()];
 			if( commandClassRef )
 			{
-				var command/*SimpleCommand*/ = new commandClassRef();
-				//var command/*SimpleCommand*/ = clone( commandClassRef );
+				//var command/*SimpleCommand*/ = new commandClassRef();
+				var command/*SimpleCommand*/ = clone( commandClassRef );
 				command.execute(note);
 			}
 		},
@@ -670,7 +670,6 @@ var Model = {
 		registerProxy: function( proxy )
 		{
 			this.proxyMap[proxy.getProxyName()] = proxy;
-			Ti.API.info( proxy.getProxyName() );
 			proxy.onRegister();
 		},
 
