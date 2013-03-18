@@ -380,6 +380,7 @@ var Facade = {
 		notifyObservers: function( note )
 		{
 			this.view.notifyObservers(note);
+			this.model.notifyObservers(note);
 		}
 };
 
@@ -646,6 +647,16 @@ var Model = {
 		proxyMap: null,
 
 		/**
+		 * @private
+		 * 
+		 * Mapping of <code>Notification</code> names to <code>Observers</code>
+		 * lists.
+		 *
+		 * @type {Object}
+		 */
+		observerMap: null,
+
+		/**
 		 * Initialize a <code>Model</code> instance.
 		 * 
 		 * @throws {Error}
@@ -658,7 +669,92 @@ var Model = {
 				throw Error( Model.SINGLETON_MSG );
 
 			this.proxyMap = {};
+			this.observerMap = {};
 			this.initializeModel();
+		},
+
+		/**
+		 * Register an <code>Observer</code> to be notified of
+		 * <code>Notifications</code> with a given name.
+		 *
+		 * @param {String} name
+		 * 		The name of the <code>Notification</code>s to notify this
+		 * 		<code>Observer</code> of.
+		 * 
+		 * @param {Observer} observer
+		 * 		The <code>Observer</code> to register.
+		 */
+		registerObserver: function( name, observer )
+		{
+			var observers/*Array*/ = this.observerMap[name];
+			if( observers )
+				observers.push(observer);
+			else
+				this.observerMap[name] = [observer];
+		},
+
+		/**
+		 * Notify the <code>Observer</code>s for a particular
+		 * <code>Notification</code>.
+		 *
+		 * <P>
+		 * All previously attached <code>Observer</code>s for this
+		 * <code>Notification</code>'s list are notified and are passed a reference
+		 * to the <code>Notification</code> in the order in which they were
+		 * registered.
+		 *
+		 * @param {Notification} note
+		 * 		The <code>Notification</code> to notify <code>Observer</code>s
+		 * 		of.
+		 */
+		notifyObservers: function( note )
+		{
+			var name/*String*/ = note.getName();
+		
+			var observersRef/*Array*/ = this.observerMap[name];
+			if( observersRef )
+			{
+				// Copy the array.
+				var observers/*Array*/ = observersRef.slice(0);
+				var len/*Number*/ = observers.length;
+				for( var i/*Number*/=0; i<len; i++ )
+				{
+					var observer/*Observer*/ = observers[i];
+					observer.notifyObserver(note);
+				}
+			}
+		},
+
+		/**
+		 * Remove the <code>Observer</code> for a given <i>notifyContext</i>
+		 * from an <code>Observer</code> list for a given
+		 * <code>Notification</code> name.
+		 *
+		 * @param {String} name
+		 * 		Which <code>Observer</code> list to remove from.
+		 *
+		 * @param {Object} notifyContext
+		 * 		Remove the <code>Observer</code> with this object as its
+		 *		<i>notifyContext</i>.
+		 */
+		removeObserver: function( name, notifyContext )
+		{
+			var observers/*Array*/ = this.observerMap[name];
+			var i/*Number*/ = observers.length;
+
+			while( i-- )
+			{
+				var observer/*Observer*/ = observers[i];
+				if( observer.compareNotifyContext(notifyContext) )
+				{
+					observers.splice( i, 1 );
+					break;
+				}
+			}
+
+			// Remove empty observer lists.
+			if( !observers.length )
+				delete this.observerMap[name];
 		},
 
 		/**
@@ -670,6 +766,18 @@ var Model = {
 		registerProxy: function( proxy )
 		{
 			this.proxyMap[proxy.getProxyName()] = proxy;
+
+			// Register Proxy as an observer for each of its notification interests
+			var interests/*Array*/ = proxy.listNotificationInterests();
+			var len/*Number*/ = interests.length;
+			if( len )
+			{
+            	// Register Proxy as Observer for its list of Notification interests
+    			var observer/*Observer*/ = clone(Observer, proxy.handleNotification, proxy );
+				for( var i=0; i<len; i++ )
+					this.registerObserver( interests[i], observer );
+			}
+
 			proxy.onRegister();
 		},
 
@@ -723,7 +831,12 @@ var Model = {
 			var proxy/*Proxy*/ = this.proxyMap[proxyName];
 			if( !proxy )
 				return null;
-				
+			
+			var interests/*Array*/ = proxy.listNotificationInterests();
+			var i/*Number*/ = interests.length;
+			while (i--) 
+				this.removeObserver( interests[i], proxy );
+
 			delete this.proxyMap[proxyName];
 			proxy.onRemove();
 			return proxy;
@@ -1797,6 +1910,33 @@ var Proxy = clone( Notifier );
 		 * This method is usually overridden as needed by the subclass.
 		 */
 		Proxy.onRemove = function(){};
+
+		/**
+		 * List the <code>Notification</code> names this
+		 * <code>Mediator</code> is interested in being notified of.
+		 *
+		 * @return {Array}
+		 * 		The list of notifications names in which is interested the
+		 * 		<code>Mediator</code>.
+		 */
+		Proxy.listNotificationInterests = function()
+		{
+			return [];
+		};
+
+		/**
+		 * Handle <code>Notification</code>s.
+		 *
+		 * <P>
+		 * Typically this will be handled in a switch statement,
+		 * with one 'case' entry per <code>Notification</code>
+		 * the <code>Mediator</code> is interested in.
+		 *
+		 * @param {Notification} note
+		 * 		The notification instance to be handled.
+		 */
+		Proxy.handleNotification = function( note ){};
+
 /**
  * The default name of the <code>Proxy</code>
  * 
